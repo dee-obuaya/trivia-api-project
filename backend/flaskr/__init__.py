@@ -87,6 +87,15 @@ def create_app(test_config=None):
         formatted_categories = formatted_categories = {
             category.id: category.type for category in categories
         }
+        current_categories = [Category.query.filter(
+            Category.id == q['category']).one_or_none().type for q in current_questions]
+        formatted_current_category = []
+
+        for category in current_categories:
+            if category in formatted_current_category:
+                pass 
+            else:
+                formatted_current_category.append(category)
 
         if len(current_questions) == 0:
             abort(404)
@@ -96,7 +105,7 @@ def create_app(test_config=None):
             'questions': current_questions,
             'total_questions': len(selection),
             'categories': formatted_categories,
-            'current_category': 'all'
+            'current_category': formatted_current_category
         })
 
     """
@@ -151,28 +160,17 @@ def create_app(test_config=None):
     @app.route("/questions", methods=["POST"])
     def add_new_question():
         body = request.get_json()
-        search = body.get('searchTerm', '')
+        search = body.get('searchTerm', None)
 
-        if search != '':
-            search_selection = Question.query.order_by(Question.id).filter(Question.question.ilike(f'%{search}%') | Question.question.contains(search)).all()
-
-            if search_selection == [] or search_selection == {}:
-                abort(404)
-            else:
-                return jsonify({
-                    "success": True,
-                    "questions": [q.format() for q in search_selection],
-                    "total_questions": len(search_selection),
-                    "current_category": None
-                })
-        else:
+        if search is None:
             new_question = body.get('question', None)
             new_answer = body.get('answer', None)
             new_category = body.get('category', None)
             new_difficulty = body.get('difficulty', None)
 
             try:
-                question = Question(question=new_question, answer=new_answer, category=new_category, difficulty=new_difficulty)
+                question = Question(question=new_question, answer=new_answer,
+                                        category=new_category, difficulty=new_difficulty)
                 question.insert()
 
                 selection = Question.query.order_by(Question.category).all()
@@ -187,6 +185,19 @@ def create_app(test_config=None):
 
             except:
                 abort(405)
+        else:
+            search_selection = Question.query.order_by(Question.id).filter(Question.question.ilike(f'%{search}%') | Question.question.contains(search)).all()
+              
+            if search_selection:
+                return jsonify({
+                    "success": True,
+                    "questions": [q.format() for q in search_selection],
+                    "total_questions": len(search_selection),
+                    "current_category": [Category.query.filter(Category.id == q.category).one_or_none().type for q in search_selection]
+                    })
+            else: 
+                abort(404)
+
 
     """
     @TODO:
@@ -231,32 +242,34 @@ def create_app(test_config=None):
         category = quiz_category['id']
         previous_questions = body.get('previous_questions')
 
-        print(category, type(category))
-
         if category != '' and category != 0:
-            print('category not null')
             questions = Question.query.filter(Question.category == category).all()
         elif category == 0:
-            print('all categories')
             questions = Question.query.all()
         else:
-            abort(405)
+            abort(400)
 
         repeated_question = True
-
-        while repeated_question:
-            new_question = random.choice(questions)
-            formatted_question = new_question.format()
-
-            if formatted_question['id'] in previous_questions:
-                new_question = random.choice(questions)
-            else:
-                repeated_question = False
                 
-        return jsonify({
-            "success": True,
-            "question": formatted_question
-        })
+        if len(questions) < 5 and len(previous_questions) == len(questions) or len(previous_questions) == 5:
+            return jsonify({
+                "success": True,
+                "question": None
+            })
+        else:
+            while repeated_question:
+                new_question = random.choice(questions)
+                formatted_question = new_question.format()
+
+                if formatted_question['id'] in previous_questions:
+                    new_question = random.choice(questions)
+                else:
+                    repeated_question = False
+            
+            return jsonify({
+                "success": True,
+                "question": formatted_question
+            })
 
 
 
@@ -265,6 +278,14 @@ def create_app(test_config=None):
     Create error handlers for all expected errors
     including 404 and 422.
     """
+    @app.errorhandler(400)
+    def bad_request(error):
+        return jsonify({
+            "success": False,
+            "error": 400,
+            "message": "bad request"
+        }), 400
+
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({
@@ -273,14 +294,6 @@ def create_app(test_config=None):
             "message": "resource not found"
         }), 404
 
-    @app.errorhandler(422)
-    def unprocessable(error):
-        return jsonify({
-            "success": False,
-            "error": 422,
-            "message": "unprocessable"
-        }), 422
-
     @app.errorhandler(405)
     def method_not_allowed(error):
         return jsonify({
@@ -288,6 +301,14 @@ def create_app(test_config=None):
             "error": 405,
             "message": "method not allowed"
         }), 405
+
+    @app.errorhandler(422)
+    def unprocessable(error):
+        return jsonify({
+            "success": False,
+            "error": 422,
+            "message": "unprocessable"
+        }), 422
 
     return app
 

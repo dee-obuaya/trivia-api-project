@@ -117,7 +117,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data["message"], "method not allowed")
 
     def test_get_paginated_search_results(self):
-        res = self.client().post('/questions', json={'query': 'La Gioconda'})
+        res = self.client().post('/questions', json={'searchTerm': 'La Gioconda'})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
@@ -127,7 +127,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertTrue(data["total_questions"], 2)
 
     def test_404_get_paginated_search_no_results(self):
-        res = self.client().post("/questions", json={"query": "pigry"})
+        res = self.client().post("/questions", json={"searchTerm": "fuck"})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 404)
@@ -160,13 +160,13 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data["success"], True)
         self.assertTrue(data["question"])
 
-    def test_405_post_quiz_method_not_allowed(self):
-        res = self.client().post("/quizzes/2", json={'quiz_category': {'type': 'Sports', 'id': '6'}, 'previous_questions': []})
+    def test_404_quiz_catgeory_null_or_wrong_endpoint(self):
+        res = self.client().post("/quizzes/2", json={'quiz_category': '', 'previous_questions': []})
         data = json.loads(res.data)
 
-        self.assertEqual(res.status_code, 405)
+        self.assertEqual(res.status_code, 404)
         self.assertEqual(data["success"], False)
-        self.assertEqual(data["message"], "method not allowed")
+        self.assertEqual(data["message"], "resource not found")
 
 # Make the tests conveniently executable
 if __name__ == "__main__":
