@@ -117,14 +117,13 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data["message"], "method not allowed")
 
     def test_get_paginated_search_results(self):
-        res = self.client().post('/questions', json={'searchTerm': 'La Gioconda'})
+        res = self.client().post('/questions', json={'searchTerm': ''})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
         self.assertTrue(data['questions'])
         self.assertTrue(data['total_questions'])
-        self.assertTrue(data["total_questions"], 2)
 
     def test_404_get_paginated_search_no_results(self):
         res = self.client().post("/questions", json={"searchTerm": "fuck"})
@@ -141,7 +140,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data["success"], True)
         self.assertTrue(data["questions"])
-        self.assertTrue(data["total_questions"], 3)
+        self.assertTrue(data["total_questions"])
         self.assertTrue(data["current_category"], "Geography")
 
     def test_404_get_questions_for_invalid_category(self):
